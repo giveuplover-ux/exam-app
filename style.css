@@ -1,0 +1,31 @@
+body {
+    font-family: sans-serif;
+    padding: 10px;
+    max-width: 600px;
+    margin: auto;
+}
+
+button {
+    padding: 12px;
+    margin: 5px 0;
+    width: 100%;
+    font-size: 16px;
+}
+
+.hidden {
+    display: none;
+}
+
+#topBar {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.option {
+    display: block;
+    margin: 8px 0;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
