@@ -2382,6 +2382,7 @@ function showQuestion(){
         `第${currentIndex+1}題：${q.q}`;
 
     let html="";
+
     ["A","B","C","D"].forEach((l,i)=>{
         let checked = userAnswers[currentIndex]?.includes(l)?"checked":"";
 
@@ -2468,23 +2469,45 @@ function submitExam(){
     let html="";
 
     examList.forEach((q,i)=>{
-        let user=userAnswers[i]||[];
+        let user = userAnswers[i] || [];
 
-        let correct = JSON.stringify(user.sort())===JSON.stringify(q.a.sort());
+        let correct = JSON.stringify(user.sort()) === JSON.stringify(q.a.sort());
 
-        if(correct) score++;
-        else wrongQuestions.push(q);
+        if(correct){
+            score++;
+            return; // ✅ 正確的不顯示（你要求只顯示錯題）
+        }
 
-        html+=`
-        <p>
-        ${i+1}. ${q.q}<br>
-        你的答案：${user.join(",")||"未答"}<br>
-        正確答案：${q.a.join(",")}
-        </p><hr>`;
+        wrongQuestions.push(q);
+
+        // 👉 把 A/B 轉成「完整內容」
+        let userText = user.map(a=>{
+            let idx = a.charCodeAt(0) - 65;
+            return `(${a}) ${q.options[idx]}`;
+        });
+
+        let correctText = q.a.map(a=>{
+            let idx = a.charCodeAt(0) - 65;
+            return `(${a}) ${q.options[idx]}`;
+        });
+
+        html += `
+        <div style="margin-bottom:15px;">
+        <b>${i+1}. ${q.q}</b><br><br>
+
+        ❌ 你的答案：<br>
+        ${userText.length ? userText.join("<br>") : "未作答"}<br><br>
+
+        ✅ 正確答案：<br>
+        ${correctText.join("<br>")}
+        </div>
+        <hr>
+        `;
     });
 
     document.getElementById("score").innerText =
         `分數：${score}/${examList.length}`;
 
-    document.getElementById("list").innerHTML = html;
+    document.getElementById("list").innerHTML =
+        html || "🎉 全部答對！";
 }
