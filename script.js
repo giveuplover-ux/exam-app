@@ -2426,7 +2426,7 @@ q.options.forEach((opt, i) => {
     html += `
     <label class="option">
         <input type="${type}" name="opt" value="${letter}" ${checked}
-            onchange="selectAnswer('${letter}')">
+            onclick="selectAnswer('${letter}')">
         ${letter}. ${opt}
     </label>
     `;
