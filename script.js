@@ -1,10 +1,6 @@
-let questions = [];
-let examList = [];
-let currentIndex = 0;
-let userAnswers = [];
-
-// ===== 題庫 =====
-const rawData = `答案
+// ===== 題庫（👉 把你的360題貼在這裡）=====
+const rawData = `
+答案
 題目
 A
 1、關於各國在物聯網發展現況的敘述，下列哪一項錯誤？
@@ -2284,179 +2280,211 @@ A
 (C) Visual C++
 (D) Dev-C++
 
+
 `;
+
+let questions = parseQuestions(rawData);
+let examList = [];
+let currentIndex = 0;
+let userAnswers = [];
+let wrongQuestions = [];
+let timerInterval;
+let timeLeft = 0;
 
 // ===== 解析題目 =====
 function parseQuestions(text) {
-    const lines = text.split("\n")
-        .map(l => l.trim())
-        .filter(l => l && l !== "答案" && l !== "題目");
-
+    const lines = text.split("\n").map(l=>l.trim()).filter(l=>l);
     let result = [];
-    let i = 0;
 
-    while (i < lines.length) {
+    for(let i=0;i<lines.length;i++){
+        if(/^[A-D](,[A-D])*$/.test(lines[i])){
+            let answer = lines[i].split(",");
+            let q = lines[i+1]?.replace(/^\d+、/,"") || "";
+            let options = [];
 
-        if (/^[A-D](,[A-D])*$/.test(lines[i])) {
-
-            let answer = lines[i].split(",").map(a => a.trim());
-
-            let j = i + 1;
-            while (j < lines.length && !/^\d+、/.test(lines[j])) {
-                j++;
+            for(let j=1;j<=4;j++){
+                options.push(lines[i+1+j]?.replace(/^\([A-D]\)/,"") || "");
             }
 
-            if (j < lines.length) {
-
-                let q = lines[j].replace(/^\d+、/, "");
-                let options = [];
-
-                let k = j + 1;
-                while (k < lines.length && options.length < 4) {
-
-                    let clean = lines[k].replace(/^\([A-D]\)\s*/, "");
-                    options.push(clean);
-                    k++;
-                }
-
-                if (options.length === 4) {
-                    result.push({
-                        q,
-                        options,
-                        a: answer,
-                        type: answer.length > 1 ? "multiple" : "single"
-                    });
-                }
-
-                i = k;
-            } else {
-                i++;
+            if(q && options.length===4){
+                result.push({
+                    q,
+                    options,
+                    a: answer,
+                    type: answer.length>1?"multiple":"single"
+                });
             }
-
-        } else {
-            i++;
         }
     }
-
     return result;
 }
 
-// ===== 初始化 =====
-questions = parseQuestions(rawData);
+// ===== 開始考試 =====
+function startExam(count, minutes){
+    document.getElementById("menu").classList.add("hidden");
+    document.getElementById("exam").classList.remove("hidden");
 
-// ===== 顯示題目 =====
-function showQuestion() {
+    examList = [...questions].slice(0,count);
+    userAnswers = [];
+    currentIndex = 0;
 
-    let q = examList[currentIndex];
-
-    let html = `
-        <h3>第 ${currentIndex + 1} 題</h3>
-        <p>${q.q}</p>
-    `;
-
-    ["A","B","C","D"].forEach((letter, i) => {
-
-        let checked = userAnswers[currentIndex]?.includes(letter) ? "checked" : "";
-
-        html += `
-        <label>
-            <input type="${q.type === "single" ? "radio" : "checkbox"}"
-                   name="option"
-                   value="${letter}"
-                   ${checked}
-                   onchange="selectAnswer('${letter}')">
-            (${letter}) ${q.options[i]}
-        </label><br>
-        `;
-    });
-
-    document.getElementById("app").innerHTML = html;
-}
-
-// ===== 選答案 =====
-function selectAnswer(letter) {
-
-    let q = examList[currentIndex];
-
-    if (!userAnswers[currentIndex]) userAnswers[currentIndex] = [];
-
-    if (q.type === "single") {
-        userAnswers[currentIndex] = [letter];
-    } else {
-        let arr = userAnswers[currentIndex];
-
-        if (arr.includes(letter)) {
-            userAnswers[currentIndex] = arr.filter(x => x !== letter);
-        } else {
-            userAnswers[currentIndex] = [...arr, letter];
-        }
-    }
-
+    startTimer(minutes);
+    renderNav();
     showQuestion();
 }
 
-// ===== 下一題 =====
-function nextQuestion() {
-    if (currentIndex < examList.length - 1) {
+// ===== 學習模式 =====
+function startStudy(){
+    startExam(questions.length,999);
+}
+
+// ===== 錯題再練習 =====
+function retryWrong(){
+    if(wrongQuestions.length===0){
+        alert("目前沒有錯題");
+        return;
+    }
+
+    document.getElementById("menu").classList.add("hidden");
+    document.getElementById("exam").classList.remove("hidden");
+
+    examList = [...wrongQuestions];
+    userAnswers = [];
+    currentIndex = 0;
+
+    renderNav();
+    showQuestion();
+}
+
+// ===== 題號導航 =====
+function renderNav(){
+    let nav = "";
+    examList.forEach((_,i)=>{
+        let cls="";
+        if(i===currentIndex) cls="active";
+        else if(userAnswers[i]) cls="done";
+
+        nav += `<button class="${cls}" onclick="goTo(${i})">${i+1}</button>`;
+    });
+    document.getElementById("questionNav").innerHTML = nav;
+}
+
+function goTo(i){
+    currentIndex = i;
+    showQuestion();
+}
+
+// ===== 顯示題目 =====
+function showQuestion(){
+    let q = examList[currentIndex];
+
+    document.getElementById("question").innerText =
+        `第${currentIndex+1}題：${q.q}`;
+
+    let html="";
+    ["A","B","C","D"].forEach((l,i)=>{
+        let checked = userAnswers[currentIndex]?.includes(l)?"checked":"";
+
+        html+=`
+        <label>
+        <input type="${q.type==="single"?"radio":"checkbox"}"
+        name="opt" value="${l}" ${checked}
+        onchange="selectAnswer('${l}')">
+        (${l}) ${q.options[i]}
+        </label><br>`;
+    });
+
+    document.getElementById("options").innerHTML = html;
+
+    document.getElementById("progress").innerText =
+        `進度：${currentIndex+1}/${examList.length}`;
+
+    renderNav();
+}
+
+// ===== 選答案 =====
+function selectAnswer(l){
+    let q = examList[currentIndex];
+
+    if(!userAnswers[currentIndex]) userAnswers[currentIndex]=[];
+
+    if(q.type==="single"){
+        userAnswers[currentIndex]=[l];
+    }else{
+        let arr=userAnswers[currentIndex];
+        if(arr.includes(l)){
+            userAnswers[currentIndex]=arr.filter(x=>x!==l);
+        }else{
+            userAnswers[currentIndex]=[...arr,l];
+        }
+    }
+    renderNav();
+}
+
+// ===== 切題 =====
+function nextQuestion(){
+    if(currentIndex<examList.length-1){
         currentIndex++;
         showQuestion();
     }
 }
 
-// ===== 上一題 =====
-function prevQuestion() {
-    if (currentIndex > 0) {
+function prevQuestion(){
+    if(currentIndex>0){
         currentIndex--;
         showQuestion();
     }
 }
 
-// ===== 跳題 =====
-function goToQuestion() {
-    let num = parseInt(document.getElementById("goto").value);
-    if (num >= 1 && num <= examList.length) {
-        currentIndex = num - 1;
-        showQuestion();
-    }
+// ===== 計時器 =====
+function startTimer(min){
+    timeLeft = min*60;
+
+    clearInterval(timerInterval);
+    timerInterval = setInterval(()=>{
+        timeLeft--;
+
+        let m = Math.floor(timeLeft/60);
+        let s = timeLeft%60;
+
+        document.getElementById("timer").innerText =
+            `⏰ ${m}:${s.toString().padStart(2,"0")}`;
+
+        if(timeLeft<=0){
+            clearInterval(timerInterval);
+            submitExam();
+        }
+    },1000);
 }
 
-// ===== 開始考試 =====
-function startExam() {
-    examList = questions;
-    userAnswers = [];
-    currentIndex = 0;
-    showQuestion();
-}
+// ===== 交卷 =====
+function submitExam(){
+    document.getElementById("exam").classList.add("hidden");
+    document.getElementById("result").classList.remove("hidden");
 
-// ===== 練習模式 =====
-function startStudy() {
-    examList = questions;
-    userAnswers = [];
-    currentIndex = 0;
-    showQuestion();
-}
+    let score=0;
+    wrongQuestions=[];
 
-// ===== 顯示結果 =====
-function showResult() {
+    let html="";
 
-    let html = "<h2>結果</h2>";
+    examList.forEach((q,i)=>{
+        let user=userAnswers[i]||[];
 
-    examList.forEach((q, i) => {
+        let correct = JSON.stringify(user.sort())===JSON.stringify(q.a.sort());
 
-        let user = userAnswers[i] || [];
+        if(correct) score++;
+        else wrongQuestions.push(q);
 
-        let correctTexts = q.a.map(a => `${a}. ${q.options[a.charCodeAt(0)-65]}`);
-        let userTexts = user.map(a => `${a}. ${q.options[a.charCodeAt(0)-65]}`);
-
-        html += `
+        html+=`
         <p>
         ${i+1}. ${q.q}<br>
-        👉 你選：${userTexts.join("、") || "未作答"}<br>
-        👉 正確：${correctTexts.join("、")}
-        </p>
-        <hr>
-        `;
+        你的答案：${user.join(",")||"未答"}<br>
+        正確答案：${q.a.join(",")}
+        </p><hr>`;
     });
 
-    document.getElementById("app").innerHTML = html;
+    document.getElementById("score").innerText =
+        `分數：${score}/${examList.length}`;
+
+    document.getElementById("list").innerHTML = html;
 }
