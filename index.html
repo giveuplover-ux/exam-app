@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -9,32 +10,65 @@
 
 <body>
 
+<!-- ===== 首頁 ===== -->
+
 <div id="menu">
     <h1>📘 練習考試系統</h1>
-    <button onclick="startExam(50)">考50題（60分鐘）</button>
-    <button onclick="startExam(999)">全部題目（90分鐘）</button>
-    <button onclick="retryWrong()">錯題再練習</button>
+
+```
+<button onclick="startExam(50)">📝 考50題（60分鐘）</button>
+<button onclick="startExam(999)">📝 全部題目（90分鐘）</button>
+<button onclick="startStudy()">📖 學習模式</button>
+<button onclick="retryWrong()">❌ 錯題再練習</button>
+```
+
 </div>
+
+<!-- ===== 考試畫面 ===== -->
 
 <div id="exam" class="hidden">
-    <div id="topBar">
-        <span id="progress"></span>
-        <span id="timer"></span>
-    </div>
 
-    <h2 id="question"></h2>
-    <div id="options"></div>
-
-    <button onclick="nextQuestion()">下一題</button>
+```
+<!-- 上方資訊 -->
+<div id="topBar">
+    <span id="progress"></span>
+    <span id="timer"></span>
 </div>
 
+<!-- 題號導航 -->
+<div id="questionNav" style="margin-bottom:10px;"></div>
+
+<!-- 題目 -->
+<h2 id="question"></h2>
+
+<!-- 選項 -->
+<div id="options"></div>
+
+<!-- 操作按鈕 -->
+<div style="margin-top:15px;">
+    <button onclick="prevQuestion()">⬅ 上一題</button>
+    <button onclick="nextQuestion()">下一題 ➡</button>
+</div>
+```
+
+</div>
+
+<!-- ===== 結果畫面 ===== -->
+
 <div id="result" class="hidden">
-    <h2>結果</h2>
-    <div id="score"></div>
-    <div id="list"></div>
-    <button onclick="location.reload()">重新開始</button>
+    <h2>📊 考試結果</h2>
+
+```
+<div id="score" style="font-size:20px;margin-bottom:10px;"></div>
+
+<div id="list"></div>
+
+<button onclick="location.reload()">🔄 重新開始</button>
+```
+
 </div>
 
 <script src="script.js"></script>
+
 </body>
 </html>
