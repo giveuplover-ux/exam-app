@@ -1,5 +1,9 @@
 let questions = [];
+let examList = [];
+let currentIndex = 0;
+let userAnswers = [];
 
+// ===== 題庫 =====
 const rawData = `答案
 題目
 A
@@ -2284,325 +2288,175 @@ A
 
 // ===== 解析題目 =====
 function parseQuestions(text) {
-const lines = text.split("\n")
-.map(l => l.trim())
-.filter(l => l && l !== "答案" && l !== "題目");
+    const lines = text.split("\n")
+        .map(l => l.trim())
+        .filter(l => l && l !== "答案" && l !== "題目");
 
-```
-let result = [];
-let i = 0;
+    let result = [];
+    let i = 0;
 
-while (i < lines.length) {
+    while (i < lines.length) {
 
-    if (/^[A-D](,[A-D])*$/.test(lines[i])) {
-        let answer = lines[i].split(",");
+        if (/^[A-D](,[A-D])*$/.test(lines[i])) {
 
-        let j = i + 1;
-        while (j < lines.length && !/^\d+、/.test(lines[j])) j++;
+            let answer = lines[i].split(",").map(a => a.trim());
 
-        if (j < lines.length) {
-            let q = lines[j].replace(/^\d+、/, "");
-            let options = [];
-
-            let k = j + 1;
-            while (k < lines.length && options.length < 4) {
-                options.push(lines[k]);
-                k++;
+            let j = i + 1;
+            while (j < lines.length && !/^\d+、/.test(lines[j])) {
+                j++;
             }
 
-            if (options.length === 4) {
-                result.push({
-                    q,
-                    options,
-                    a: answer,
-                    type: answer.length > 1 ? "multiple" : "single"
-                });
+            if (j < lines.length) {
+
+                let q = lines[j].replace(/^\d+、/, "");
+                let options = [];
+
+                let k = j + 1;
+                while (k < lines.length && options.length < 4) {
+
+                    let clean = lines[k].replace(/^\([A-D]\)\s*/, "");
+                    options.push(clean);
+                    k++;
+                }
+
+                if (options.length === 4) {
+                    result.push({
+                        q,
+                        options,
+                        a: answer,
+                        type: answer.length > 1 ? "multiple" : "single"
+                    });
+                }
+
+                i = k;
+            } else {
+                i++;
             }
 
-            i = k;
         } else {
             i++;
         }
-
-    } else {
-        i++;
     }
+
+    return result;
 }
 
-return result;
-```
-
-}
-
+// ===== 初始化 =====
 questions = parseQuestions(rawData);
 
-// ===== 全域變數 =====
-let examList = [];
-let currentIndex = 0;
-let userAnswers = [];
-let wrongList = [];
-let timer;
-let timeLeft = 0;
-let mode = "exam";
-
-// ===== 開始考試 =====
-function startExam(count) {
-mode = "exam";
-
-```
-examList = shuffle([...questions]).slice(0, count);
-userAnswers = Array(examList.length).fill(null);
-currentIndex = 0;
-
-timeLeft = count === 50 ? 3600 : 5400;
-
-startTimer();
-showExam();
-```
-
-}
-
-// ===== 學習模式 =====
-function startStudy() {
-mode = "study";
-examList = [...questions];
-userAnswers = Array(examList.length).fill(null);
-currentIndex = 0;
-
-```
-document.getElementById("timer").innerText = "學習模式";
-showExam();
-```
-
-}
-
-// ===== 錯題再練習 =====
-function retryWrong() {
-if (wrongList.length === 0) {
-alert("沒有錯題");
-return;
-}
-
-```
-examList = [...wrongList];
-userAnswers = Array(examList.length).fill(null);
-currentIndex = 0;
-
-showExam();
-```
-
-}
-
-// ===== 顯示考試 =====
-function showExam() {
-document.getElementById("menu").classList.add("hidden");
-document.getElementById("exam").classList.remove("hidden");
-
-```
-renderNav();
-showQuestion();
-```
-
-}
-
-// ===== 題目顯示 =====
+// ===== 顯示題目 =====
 function showQuestion() {
-let q = examList[currentIndex];
 
-```
-document.getElementById("progress").innerText =
-    `第 ${currentIndex + 1} / ${examList.length} 題`;
+    let q = examList[currentIndex];
 
-document.getElementById("question").innerText = q.q;
-
-let html = "";
-
-q.options.forEach((opt, i) => {
-    let letter = ["A","B","C","D"][i];
-    let checked = userAnswers[currentIndex]?.includes(letter) ? "checked" : "";
-
-    let type = q.type === "single" ? "radio" : "checkbox";
-
-    html += `
-    <label class="option">
-        <input type="${type}" name="opt" value="${letter}" ${checked}
-            onclick="selectAnswer('${letter}')">
-        ${letter}. ${opt}
-    </label>
+    let html = `
+        <h3>第 ${currentIndex + 1} 題</h3>
+        <p>${q.q}</p>
     `;
-});
 
-if (mode === "study") {
-    html += `<div style="margin-top:10px;color:green;">
-    👉 正確答案：${q.a.join(",")}
-    </div>`;
-}
+    ["A","B","C","D"].forEach((letter, i) => {
 
-document.getElementById("options").innerHTML = html;
+        let checked = userAnswers[currentIndex]?.includes(letter) ? "checked" : "";
 
-saveProgress();
-```
+        html += `
+        <label>
+            <input type="${q.type === "single" ? "radio" : "checkbox"}"
+                   name="option"
+                   value="${letter}"
+                   ${checked}
+                   onchange="selectAnswer('${letter}')">
+            (${letter}) ${q.options[i]}
+        </label><br>
+        `;
+    });
 
+    document.getElementById("app").innerHTML = html;
 }
 
 // ===== 選答案 =====
 function selectAnswer(letter) {
-let q = examList[currentIndex];
 
-```
-if (!userAnswers[currentIndex]) userAnswers[currentIndex] = [];
+    let q = examList[currentIndex];
 
-if (q.type === "single") {
-    userAnswers[currentIndex] = [letter];
-} else {
-    let arr = userAnswers[currentIndex];
+    if (!userAnswers[currentIndex]) userAnswers[currentIndex] = [];
 
-    if (arr.includes(letter)) {
-        userAnswers[currentIndex] = arr.filter(x => x !== letter);
+    if (q.type === "single") {
+        userAnswers[currentIndex] = [letter];
     } else {
-        arr.push(letter);
+        let arr = userAnswers[currentIndex];
+
+        if (arr.includes(letter)) {
+            userAnswers[currentIndex] = arr.filter(x => x !== letter);
+        } else {
+            userAnswers[currentIndex] = [...arr, letter];
+        }
     }
-}
 
-renderNav();
-saveProgress();
-```
-
+    showQuestion();
 }
 
 // ===== 下一題 =====
 function nextQuestion() {
-if (currentIndex < examList.length - 1) {
-currentIndex++;
-showQuestion();
-} else {
-finishExam();
-}
+    if (currentIndex < examList.length - 1) {
+        currentIndex++;
+        showQuestion();
+    }
 }
 
 // ===== 上一題 =====
 function prevQuestion() {
-if (currentIndex > 0) {
-currentIndex--;
-showQuestion();
-}
-}
-
-// ===== 題號導航 =====
-function renderNav() {
-let nav = "";
-
-```
-examList.forEach((_, i) => {
-    let done = userAnswers[i] ? "background:#4caf50;color:white;" : "";
-    let current = i === currentIndex ? "border:2px solid red;" : "";
-
-    nav += `<button style="width:40px;margin:2px;${done}${current}"
-        onclick="goTo(${i})">${i+1}</button>`;
-});
-
-document.getElementById("questionNav").innerHTML = nav;
-```
-
+    if (currentIndex > 0) {
+        currentIndex--;
+        showQuestion();
+    }
 }
 
-function goTo(i) {
-currentIndex = i;
-showQuestion();
+// ===== 跳題 =====
+function goToQuestion() {
+    let num = parseInt(document.getElementById("goto").value);
+    if (num >= 1 && num <= examList.length) {
+        currentIndex = num - 1;
+        showQuestion();
+    }
 }
 
-// ===== 結束 =====
-function finishExam() {
-clearInterval(timer);
-
-```
-document.getElementById("exam").classList.add("hidden");
-document.getElementById("result").classList.remove("hidden");
-
-let score = 0;
-wrongList = [];
-
-let html = "";
-
-examList.forEach((q, i) => {
-    let user = userAnswers[i] || [];
-    let correct = q.a;
-
-    let isCorrect = JSON.stringify([...user].sort()) === JSON.stringify([...correct].sort());
-
-    if (isCorrect) score++;
-    else wrongList.push(q);
-
-    let userText = user.map(l => `${l}. ${q.options["ABCD".indexOf(l)]}`).join("<br>") || "未作答";
-    let correctText = correct.map(l => `${l}. ${q.options["ABCD".indexOf(l)]}`).join("<br>");
-
-    html += `
-    <div style="border-bottom:1px solid #ccc;margin:10px 0;">
-        <b>${i+1}. ${q.q}</b><br>
-        你選：${userText}<br>
-        正確：${correctText}<br>
-        ${isCorrect ? "✔" : "❌"}
-    </div>`;
-});
-
-document.getElementById("score").innerText =
-    `分數：${score} / ${examList.length}`;
-
-document.getElementById("list").innerHTML = html;
-
-localStorage.removeItem("progress");
-```
-
+// ===== 開始考試 =====
+function startExam() {
+    examList = questions;
+    userAnswers = [];
+    currentIndex = 0;
+    showQuestion();
 }
 
-// ===== 計時 =====
-function startTimer() {
-clearInterval(timer);
-
-```
-timer = setInterval(() => {
-    timeLeft--;
-
-    let m = Math.floor(timeLeft / 60);
-    let s = timeLeft % 60;
-
-    document.getElementById("timer").innerText =
-        `${m}:${s.toString().padStart(2,"0")}`;
-
-    if (timeLeft <= 0) finishExam();
-}, 1000);
-```
-
+// ===== 練習模式 =====
+function startStudy() {
+    examList = questions;
+    userAnswers = [];
+    currentIndex = 0;
+    showQuestion();
 }
 
-// ===== 洗牌 =====
-function shuffle(arr) {
-return arr.sort(() => Math.random() - 0.5);
+// ===== 顯示結果 =====
+function showResult() {
+
+    let html = "<h2>結果</h2>";
+
+    examList.forEach((q, i) => {
+
+        let user = userAnswers[i] || [];
+
+        let correctTexts = q.a.map(a => `${a}. ${q.options[a.charCodeAt(0)-65]}`);
+        let userTexts = user.map(a => `${a}. ${q.options[a.charCodeAt(0)-65]}`);
+
+        html += `
+        <p>
+        ${i+1}. ${q.q}<br>
+        👉 你選：${userTexts.join("、") || "未作答"}<br>
+        👉 正確：${correctTexts.join("、")}
+        </p>
+        <hr>
+        `;
+    });
+
+    document.getElementById("app").innerHTML = html;
 }
-
-// ===== 儲存進度 =====
-function saveProgress() {
-localStorage.setItem("progress", JSON.stringify({
-examList,
-userAnswers,
-currentIndex
-}));
-}
-
-// ===== 載入進度 =====
-window.onload = () => {
-let data = localStorage.getItem("progress");
-
-```
-if (data) {
-    let p = JSON.parse(data);
-
-    examList = p.examList;
-    userAnswers = p.userAnswers;
-    currentIndex = p.currentIndex;
-
-    showExam();
-}
-```
-
-};
